@@ -1,4 +1,14 @@
-use crate::{Ble, Data, acl::{encode_acl_packet, BoundaryFlag, HostBroadcastFlag}, att::{ATT_READ_BY_GROUP_TYPE_REQUEST_OPCODE, ATT_READ_BY_TYPE_REQUEST_OPCODE, Att, AttErrorCode, AttParseError, AttributeData, AttributePayloadData, Uuid, att_encode_error_response, att_encode_read_by_group_type_response, att_encode_read_by_type_response, att_encode_read_response, att_encode_write_response, parse_att}, l2cap::{encode_l2cap, parse_l2cap, L2capParseError}};
+use crate::{
+    acl::{encode_acl_packet, BoundaryFlag, HostBroadcastFlag},
+    att::{
+        att_encode_error_response, att_encode_read_by_group_type_response,
+        att_encode_read_by_type_response, att_encode_read_response, att_encode_write_response,
+        parse_att, Att, AttErrorCode, AttParseError, AttributeData, AttributePayloadData, Uuid,
+        ATT_READ_BY_GROUP_TYPE_REQUEST_OPCODE, ATT_READ_BY_TYPE_REQUEST_OPCODE,
+    },
+    l2cap::{encode_l2cap, parse_l2cap, L2capParseError},
+    Ble, Data,
+};
 
 const PRIMARY_SERVICE_UUID16: Uuid = Uuid::Uuid16(0x2800);
 const CHARACTERISTIC_UUID16: Uuid = Uuid::Uuid16(0x2803);
@@ -33,7 +43,7 @@ impl<'a> AttributeServer<'a> {
             service.start_handle = current_handle;
             service.end_handle = current_handle + 2;
             service.characteristics_handle = current_handle + 2;
-            current_handle += 2;
+            current_handle += 3;
         }
         AttributeServer { ble, services }
     }
@@ -70,13 +80,12 @@ impl<'a> AttributeServer<'a> {
                         Att::ReadReq { handle } => {
                             self.handle_read_req(handle);
                             Ok(())
-                        },
+                        }
 
                         Att::WriteReq { handle, data } => {
                             self.handle_write_req(handle, data);
                             Ok(())
-                        },
-
+                        }
                     }
                 }
             },
@@ -89,24 +98,22 @@ impl<'a> AttributeServer<'a> {
             for service in self.services.iter() {
                 if service.start_handle >= start && service.end_handle <= end {
                     let attribute_list = [AttributeData::new(
-                        service.start_handle, 
-                        service.end_handle, 
+                        service.start_handle,
+                        service.end_handle,
                         group_type,
                     )];
                     self.write_att(att_encode_read_by_group_type_response(&attribute_list));
-                    return;            
+                    return;
                 }
-            }         
+            }
         }
 
         // respond with error
-        self.write_att(
-            att_encode_error_response(
-                ATT_READ_BY_GROUP_TYPE_REQUEST_OPCODE,
-                start,
-                AttErrorCode::AttributeNotFound,
-            )    
-        );
+        self.write_att(att_encode_error_response(
+            ATT_READ_BY_GROUP_TYPE_REQUEST_OPCODE,
+            start,
+            AttErrorCode::AttributeNotFound,
+        ));
     }
 
     fn handle_read_by_type_req(&mut self, start: u16, end: u16, attribute_type: Uuid) {
@@ -122,26 +129,22 @@ impl<'a> AttributeServer<'a> {
                         // UUID of characteristic value
                     ]);
                     data.append((&service.uuid).encode().to_slice());
-                    
-                    let attribute_list =
-                    [AttributePayloadData::new(service.start_handle + 1, data)];
-                    self.write_att(att_encode_read_by_type_response(
-                        &attribute_list,
-                    ));
 
-                    return;            
+                    let attribute_list =
+                        [AttributePayloadData::new(service.start_handle + 1, data)];
+                    self.write_att(att_encode_read_by_type_response(&attribute_list));
+
+                    return;
                 }
-            }         
+            }
         }
 
         // respond with error
-        self.write_att(
-            att_encode_error_response(
-                ATT_READ_BY_TYPE_REQUEST_OPCODE,
-                start,
-                AttErrorCode::AttributeNotFound,
-            )    
-        );
+        self.write_att(att_encode_error_response(
+            ATT_READ_BY_TYPE_REQUEST_OPCODE,
+            start,
+            AttErrorCode::AttributeNotFound,
+        ));
     }
 
     fn handle_read_req(&mut self, handle: u16) {
@@ -151,12 +154,10 @@ impl<'a> AttributeServer<'a> {
                 answer = Some((*service.read_function)());
                 break;
             }
-        };
+        }
 
         if let Some(answer) = answer {
-            self.write_att(
-                att_encode_read_response(&answer)
-            );
+            self.write_att(att_encode_read_response(&answer));
             return;
         }
 
@@ -171,12 +172,10 @@ impl<'a> AttributeServer<'a> {
                 found = true;
                 break;
             }
-        };
+        }
 
         if found {
-            self.write_att(
-                att_encode_write_response()
-            );
+            self.write_att(att_encode_write_response());
             return;
         }
 
