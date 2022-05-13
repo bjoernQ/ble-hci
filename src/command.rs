@@ -67,7 +67,7 @@ pub fn create_command_data(command: Command) -> Data {
             CommandHeader::from_ogf_ocf(LE_OGF, SET_ADVERTISING_PARAMETERS_OCF, 0x0f)
                 .write_into(&mut data[1..]);
             // TODO create this - not hardcoded
-            data[4..].copy_from_slice(&[0x90, 1, 0x20, 3, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0]);
+            data[4..].copy_from_slice(&[0x00, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0]);
             Data::new(&data)
         }
         Command::LeSetAdvertisingData { ref data } => {

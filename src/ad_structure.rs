@@ -64,7 +64,11 @@ impl<'a> AdStructure<'a> {
                 }
             }
             AdStructure::ServiceUuids128(_) => todo!(),
-            AdStructure::ServiceData16 { uuid, data } => todo!(),
+            AdStructure::ServiceData16 { uuid, data } => todo!(
+                "Unimplemented AdStructure::ServiceData16 {:?} {:?}",
+                uuid,
+                data
+            ),
             AdStructure::CompleteLocalName(name) => {
                 data.append(&[(name.len() + 1) as u8, 0x09]);
                 data.append(name.as_bytes());
@@ -73,8 +77,12 @@ impl<'a> AdStructure<'a> {
             AdStructure::ManufacturerSpecificData {
                 company_identifier,
                 payload,
-            } => todo!(),
-            AdStructure::Unknown { ty, data } => todo!(),
+            } => todo!(
+                "Unimplemented AdStructure::ManufacturerSpecificData {:?} {:?}",
+                company_identifier,
+                payload
+            ),
+            AdStructure::Unknown { ty, data } => todo!("Unimplemented {:?} {:?}", ty, data),
         }
 
         data

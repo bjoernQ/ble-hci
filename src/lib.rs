@@ -2,7 +2,6 @@
 #![feature(assert_matches)]
 
 use acl::{parse_acl_packet, AclPacket};
-use att::Uuid;
 use command::{
     create_command_data, opcode, Command, SET_ADVERTISE_ENABLE_OCF, SET_ADVERTISING_DATA_OCF,
 };
@@ -28,7 +27,7 @@ const TIMEOUT_MILLIS: u64 = 1000;
 #[derive(Debug)]
 pub enum Error {
     Timeout,
-    Failed,
+    Failed(u8),
 }
 
 #[derive(Debug)]
@@ -98,8 +97,9 @@ fn check_command_completed(event: EventType) -> Result<EventType, Error> {
         data,
     } = event
     {
-        if data.to_slice()[0] != 0 {
-            return Err(Error::Failed);
+        let status = data.to_slice()[0];
+        if status != 0 {
+            return Err(Error::Failed(status));
         }
     }
 
@@ -199,7 +199,8 @@ impl<'a> Ble<'a> {
                     return Some(PollResult::Event(event));
                 }
                 _ => {
-                    // error
+                    // this is an serious error
+                    panic!("Unknown packet type {}", packet_type);
                 }
             },
             None => {}
@@ -218,7 +219,17 @@ impl<'a> Ble<'a> {
 fn read_to_data(connector: &dyn HciConnector, len: usize) -> Data {
     let mut data = [0u8; 128];
     for i in 0..len {
-        data[i] = connector.read().unwrap();
+        loop {
+            match connector.read() {
+                Some(byte) => {
+                    data[i] = byte;
+                    break;
+                }
+                None => {
+                    // TODO timeout?
+                }
+            };
+        }
     }
     let mut data = Data::new(&data);
     data.len = len;

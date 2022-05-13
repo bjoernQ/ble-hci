@@ -1,3 +1,5 @@
+use log::info;
+
 use crate::{
     acl::{encode_acl_packet, BoundaryFlag, HostBroadcastFlag},
     att::{
@@ -51,6 +53,10 @@ impl<'a> AttributeServer<'a> {
     pub fn do_work(&mut self) -> Result<(), AttributeServerError> {
         let packet = self.ble.poll();
 
+        if packet.is_some() {
+            info!("polled: {:?}", packet);
+        }
+
         match packet {
             None => Ok(()),
             Some(packet) => match packet {
@@ -58,6 +64,7 @@ impl<'a> AttributeServer<'a> {
                 crate::PollResult::AsyncData(packet) => {
                     let l2cap_packet = parse_l2cap(packet)?;
                     let packet = parse_att(l2cap_packet)?;
+                    info!("att: {:x?}", packet);
                     match packet {
                         Att::ReadByGroupTypeReq {
                             start,
@@ -185,7 +192,7 @@ impl<'a> AttributeServer<'a> {
     fn write_att(&mut self, data: Data) {
         let res = encode_l2cap(data);
         let res = encode_acl_packet(
-            0x0000,
+            0x0001,
             BoundaryFlag::FirstAutoFlushable,
             HostBroadcastFlag::NoBroadcast,
             res,
