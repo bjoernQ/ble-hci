@@ -3,17 +3,26 @@ use log::info;
 use crate::{
     acl::{encode_acl_packet, BoundaryFlag, HostBroadcastFlag},
     att::{
-        att_encode_error_response, att_encode_read_by_group_type_response,
-        att_encode_read_by_type_response, att_encode_read_response, att_encode_write_response,
-        parse_att, Att, AttErrorCode, AttParseError, AttributeData, AttributePayloadData, Uuid,
-        ATT_READ_BY_GROUP_TYPE_REQUEST_OPCODE, ATT_READ_BY_TYPE_REQUEST_OPCODE,
+        att_encode_error_response, att_encode_exchange_mtu_response,
+        att_encode_read_by_group_type_response, att_encode_read_by_type_response,
+        att_encode_read_response, att_encode_write_response, parse_att, Att, AttErrorCode,
+        AttParseError, AttributeData, AttributePayloadData, Uuid,
+        ATT_FIND_BY_TYPE_VALUE_REQUEST_OPCODE, ATT_READ_BY_GROUP_TYPE_REQUEST_OPCODE,
+        ATT_READ_BY_TYPE_REQUEST_OPCODE,
     },
+    event::EventType,
     l2cap::{encode_l2cap, parse_l2cap, L2capParseError},
     Ble, Data,
 };
 
 const PRIMARY_SERVICE_UUID16: Uuid = Uuid::Uuid16(0x2800);
 const CHARACTERISTIC_UUID16: Uuid = Uuid::Uuid16(0x2803);
+
+#[derive(Debug)]
+pub enum WorkResult {
+    DidWork,
+    GotDisconnected,
+}
 
 #[derive(Debug)]
 pub enum AttributeServerError {
@@ -50,7 +59,7 @@ impl<'a> AttributeServer<'a> {
         AttributeServer { ble, services }
     }
 
-    pub fn do_work(&mut self) -> Result<(), AttributeServerError> {
+    pub fn do_work(&mut self) -> Result<WorkResult, AttributeServerError> {
         let packet = self.ble.poll();
 
         if packet.is_some() {
@@ -58,9 +67,20 @@ impl<'a> AttributeServer<'a> {
         }
 
         match packet {
-            None => Ok(()),
+            None => Ok(WorkResult::DidWork),
             Some(packet) => match packet {
-                crate::PollResult::Event(_) => Ok(()),
+                crate::PollResult::Event(evt) => {
+                    if let EventType::DisconnectComplete {
+                        handle: _,
+                        status: _,
+                        reason: _,
+                    } = evt
+                    {
+                        Ok(WorkResult::GotDisconnected)
+                    } else {
+                        Ok(WorkResult::DidWork)
+                    }
+                }
                 crate::PollResult::AsyncData(packet) => {
                     let l2cap_packet = parse_l2cap(packet)?;
                     let packet = parse_att(l2cap_packet)?;
@@ -72,7 +92,6 @@ impl<'a> AttributeServer<'a> {
                             group_type,
                         } => {
                             self.handle_read_by_group_type_req(start, end, group_type);
-                            Ok(())
                         }
 
                         Att::ReadByTypeReq {
@@ -81,19 +100,36 @@ impl<'a> AttributeServer<'a> {
                             attribute_type,
                         } => {
                             self.handle_read_by_type_req(start, end, attribute_type);
-                            Ok(())
                         }
 
                         Att::ReadReq { handle } => {
                             self.handle_read_req(handle);
-                            Ok(())
                         }
 
                         Att::WriteReq { handle, data } => {
                             self.handle_write_req(handle, data);
-                            Ok(())
+                        }
+
+                        Att::ExchangeMtu { mtu } => {
+                            self.handle_exchange_mtu(mtu);
+                        }
+
+                        Att::FindByTypeValue {
+                            start_handle,
+                            end_handle,
+                            att_type,
+                            att_value,
+                        } => {
+                            self.handle_find_type_value(
+                                start_handle,
+                                end_handle,
+                                att_type,
+                                att_value,
+                            );
                         }
                     }
+
+                    Ok(WorkResult::DidWork)
                 }
             },
         }
@@ -187,6 +223,23 @@ impl<'a> AttributeServer<'a> {
         }
 
         panic!("should create a reasonable error instead of panic");
+    }
+
+    fn handle_exchange_mtu(&mut self, mtu: u16) {
+        info!("Requested MTU {}, returning 23", mtu);
+        self.write_att(att_encode_exchange_mtu_response(23));
+        return;
+    }
+
+    fn handle_find_type_value(&mut self, start: u16, _end: u16, _attr_type: u16, _attr_value: u16) {
+        // TODO for now just return an error
+
+        // respond with error
+        self.write_att(att_encode_error_response(
+            ATT_FIND_BY_TYPE_VALUE_REQUEST_OPCODE,
+            start,
+            AttErrorCode::AttributeNotFound,
+        ));
     }
 
     fn write_att(&mut self, data: Data) {

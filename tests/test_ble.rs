@@ -405,7 +405,7 @@ fn receiving_read_by_group_type_works() {
 }
 
 #[test]
-fn create_ready_by_group_type_resp_works() {
+fn create_read_by_group_type_resp_works() {
     let attribute_list = [
         AttributeData::new(0x0001, 0x0010, Uuid::Uuid16(0x1801)),
         AttributeData::new(0x0020, 0x0030, Uuid::Uuid16(0x1802)),
@@ -419,7 +419,7 @@ fn create_ready_by_group_type_resp_works() {
 }
 
 #[test]
-fn create_ready_by_group_type_resp_acl_works() {
+fn create_read_by_group_type_resp_acl_works() {
     let attribute_list = [
         AttributeData::new(0x0001, 0x0010, Uuid::Uuid16(0x1801)),
         AttributeData::new(0x0020, 0x0030, Uuid::Uuid16(0x1802)),
@@ -496,6 +496,10 @@ fn create_read_by_type_resp_works() {
         &[0x09, 0x06, 0x02, 0x00, 0x01, 0x02, 0x03, 0x04,]
     );
 }
+
+// TODO test EXCHANGE_MTU
+
+// TODO test FIND_TYPE_VALUE
 
 #[test]
 fn receiving_read_works() {
@@ -611,7 +615,7 @@ fn attribute_server_replies_to_group_type_requests() {
         0x02, 0x00, 0x20, 0x0b, 0x00, 0x07, 0x00, 0x04, 0x00, 0x10, 0x01, 0x00, 0xff, 0xff, 0x00,
         0x28,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (1-3, 0x2800)
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -628,7 +632,7 @@ fn attribute_server_replies_to_group_type_requests() {
         0x02, 0x00, 0x20, 0x0b, 0x00, 0x07, 0x00, 0x04, 0x00, 0x10, 0x03, 0x00, 0xff, 0xff, 0x00,
         0x28,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (not found)
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -642,7 +646,7 @@ fn attribute_server_replies_to_group_type_requests() {
         0x02, 0x00, 0x20, 0x0b, 0x00, 0x07, 0x00, 0x04, 0x00, 0x08, 0x01, 0x00, 0x02, 0x00, 0x02,
         0x28,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (not found)
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -656,7 +660,7 @@ fn attribute_server_replies_to_group_type_requests() {
         0x02, 0x00, 0x20, 0x0b, 0x00, 0x07, 0x00, 0x04, 0x00, 0x08, 0x01, 0x00, 0x03, 0x00, 0x03,
         0x28,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (not found)
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -673,7 +677,7 @@ fn attribute_server_replies_to_group_type_requests() {
     connector.provide_data_to_read(&[
         0x02, 0x00, 0x20, 0x07, 0x00, 0x03, 0x00, 0x04, 0x00, 0x0a, 0x03, 0x00,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (read resp 'Hello')
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -689,7 +693,7 @@ fn attribute_server_replies_to_group_type_requests() {
     connector.provide_data_to_read(&[
         0x02, 0x00, 0x20, 0x08, 0x00, 0x04, 0x00, 0x04, 0x00, 0x12, 0x03, 0x00, 0xab,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (write resp)
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -739,7 +743,7 @@ fn attribute_server_discover_two_services() {
         0x02, 0x00, 0x20, 0x0b, 0x00, 0x07, 0x00, 0x04, 0x00, 0x10, 0x01, 0x00, 0xff, 0xff, 0x00,
         0x28,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (1-3, 0x2800)
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -756,7 +760,7 @@ fn attribute_server_discover_two_services() {
         0x02, 0x00, 0x20, 0x0b, 0x00, 0x07, 0x00, 0x04, 0x00, 0x10, 0x04, 0x00, 0xff, 0xff, 0x00,
         0x28,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (4-6, 0x2800)
     let response_data = connector.get_written_data();
     assert_eq!(
@@ -773,7 +777,7 @@ fn attribute_server_discover_two_services() {
         0x02, 0x00, 0x20, 0x0b, 0x00, 0x07, 0x00, 0x04, 0x00, 0x10, 0x07, 0x00, 0xff, 0xff, 0x00,
         0x28,
     ]);
-    assert_matches!(srv.do_work(), Ok(()));
+    assert_matches!(srv.do_work(), Ok(_));
     // check response (not found)
     let response_data = connector.get_written_data();
     assert_eq!(

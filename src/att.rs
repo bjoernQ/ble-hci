@@ -11,6 +11,10 @@ pub const ATT_READ_REQUEST_OPCODE: u8 = 0x0a;
 const ATT_READ_RESPONSE_OPCODE: u8 = 0x0b;
 pub const ATT_WRITE_REQUEST_OPCODE: u8 = 0x12;
 const ATT_WRITE_RESPONSE_OPCODE: u8 = 0x13;
+pub const ATT_EXCHANGE_MTU_REQUEST_OPCODE: u8 = 0x02;
+const ATT_EXCHANGE_MTU_RESPONSE_OPCODE: u8 = 0x03;
+pub const ATT_FIND_BY_TYPE_VALUE_REQUEST_OPCODE: u8 = 0x06;
+//const ATT_FIND_BY_TYPE_VALUE_RESPONSE_OPCODE: u8 = 0x07;
 
 #[derive(Debug, PartialEq)]
 pub enum Uuid {
@@ -93,12 +97,21 @@ pub enum Att {
         handle: u16,
         data: Data,
     },
+    ExchangeMtu {
+        mtu: u16,
+    },
+    FindByTypeValue {
+        start_handle: u16,
+        end_handle: u16,
+        att_type: u16,
+        att_value: u16,
+    },
 }
 
 #[derive(Debug)]
 pub enum AttParseError {
     Other,
-    UnknownOpcode(u8),
+    UnknownOpcode(u8, Data),
     UnexpectedPayload,
 }
 
@@ -161,7 +174,24 @@ pub fn parse_att(packet: L2capPacket) -> Result<Att, AttParseError> {
 
             Ok(Att::WriteReq { handle, data })
         }
-        _ => Err(AttParseError::UnknownOpcode(opcode)),
+        ATT_EXCHANGE_MTU_REQUEST_OPCODE => {
+            let mtu = (payload[0] as u16) + ((payload[1] as u16) << 8);
+            Ok(Att::ExchangeMtu { mtu })
+        }
+        ATT_FIND_BY_TYPE_VALUE_REQUEST_OPCODE => {
+            let start_handle = (payload[0] as u16) + ((payload[1] as u16) << 8);
+            let end_handle = (payload[2] as u16) + ((payload[3] as u16) << 8);
+            let att_type = (payload[4] as u16) + ((payload[5] as u16) << 8);
+            let att_value = (payload[6] as u16) + ((payload[7] as u16) << 8); // only U16 supported here
+
+            Ok(Att::FindByTypeValue {
+                start_handle,
+                end_handle,
+                att_type,
+                att_value,
+            })
+        }
+        _ => Err(AttParseError::UnknownOpcode(opcode, Data::new(payload))),
     }
 }
 
@@ -281,6 +311,14 @@ pub fn att_encode_read_response(payload: &Data) -> Data {
 pub fn att_encode_write_response() -> Data {
     let mut data = Data::default();
     data.append(&[ATT_WRITE_RESPONSE_OPCODE]);
+
+    data
+}
+
+pub fn att_encode_exchange_mtu_response(mtu: u16) -> Data {
+    let mut data = Data::default();
+    data.append(&[ATT_EXCHANGE_MTU_RESPONSE_OPCODE]);
+    data.append(&[(mtu & 0xff) as u8, ((mtu >> 8) & 0xff) as u8]);
 
     data
 }
