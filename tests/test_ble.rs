@@ -19,7 +19,7 @@ use ble_hci::{
     command::{create_command_data, Command, CommandHeader},
     event::{ErrorCode, EventType},
     l2cap::{encode_l2cap, parse_l2cap},
-    Ble, Data, HciConnector, PollResult,
+    Ble, Data, HciConnection, PollResult,
 };
 
 struct TestConnector {
@@ -88,7 +88,7 @@ impl TestConnector {
     }
 }
 
-impl HciConnector for TestConnector {
+impl HciConnection for TestConnector {
     fn read(&self) -> Option<u8> {
         if self.read_max > self.read_idx {
             let r = (self.to_read.borrow())[*(self.read_idx.borrow())];

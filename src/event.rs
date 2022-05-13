@@ -1,6 +1,6 @@
 use log::info;
 
-use crate::{read_to_data, Data, HciConnector};
+use crate::{read_to_data, Data, HciConnection};
 
 #[derive(Debug)]
 pub struct Event {
@@ -73,7 +73,7 @@ const EVENT_DISCONNECTION_COMPLETE: u8 = 0x05;
 const EVENT_NUMBER_OF_COMPLETED_PACKETS: u8 = 0x13;
 
 /// Parses a command and assumes the packet type (0x04) is already read.
-pub fn parse_event(connector: &dyn HciConnector) -> EventType {
+pub fn parse_event(connector: &dyn HciConnection) -> EventType {
     let event = read_to_event(connector);
 
     match event.code {
@@ -123,7 +123,7 @@ pub fn parse_event(connector: &dyn HciConnector) -> EventType {
     }
 }
 
-fn read_to_event(connector: &dyn HciConnector) -> Event {
+fn read_to_event(connector: &dyn HciConnection) -> Event {
     let code = connector.read().unwrap() as u8;
     let len = connector.read().unwrap() as usize;
     let data = read_to_data(connector, len);

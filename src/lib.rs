@@ -1,11 +1,14 @@
 #![no_std]
 #![feature(assert_matches)]
 
+use core::cell::RefCell;
+
 use acl::{parse_acl_packet, AclPacket};
 use command::{
     create_command_data, opcode, Command, SET_ADVERTISE_ENABLE_OCF, SET_ADVERTISING_DATA_OCF,
 };
 use command::{LE_OGF, SET_ADVERTISING_PARAMETERS_OCF};
+use embedded_io::blocking::{Read, Write};
 use event::{parse_event, EventType};
 
 pub mod acl;
@@ -107,11 +110,11 @@ fn check_command_completed(event: EventType) -> Result<EventType, Error> {
 }
 
 pub struct Ble<'a> {
-    connector: &'a dyn HciConnector,
+    connector: &'a dyn HciConnection,
 }
 
 impl<'a> Ble<'a> {
-    pub fn new(connector: &'a dyn HciConnector) -> Ble<'a> {
+    pub fn new(connector: &'a dyn HciConnection) -> Ble<'a> {
         Ble { connector }
     }
 
@@ -216,7 +219,7 @@ impl<'a> Ble<'a> {
     }
 }
 
-fn read_to_data(connector: &dyn HciConnector, len: usize) -> Data {
+fn read_to_data(connector: &dyn HciConnection, len: usize) -> Data {
     let mut data = [0u8; 128];
     for i in 0..len {
         loop {
@@ -236,10 +239,52 @@ fn read_to_data(connector: &dyn HciConnector, len: usize) -> Data {
     data
 }
 
-pub trait HciConnector {
+pub trait HciConnection {
     fn read(&self) -> Option<u8>;
 
     fn write(&self, data: u8);
 
     fn millis(&self) -> u64;
+}
+
+pub struct HciConnector<T>
+where
+    T: Read + Write,
+{
+    hci: RefCell<T>,
+    get_millis: fn() -> u64,
+}
+
+impl<T> HciConnector<T>
+where
+    T: Read + Write,
+{
+    pub fn new(hci: T, get_millis: fn() -> u64) -> HciConnector<T> {
+        HciConnector {
+            hci: RefCell::new(hci),
+            get_millis,
+        }
+    }
+}
+
+impl<T> HciConnection for HciConnector<T>
+where
+    T: Read + Write,
+{
+    fn read(&self) -> Option<u8> {
+        let mut buf = [0u8];
+        let res = self.hci.borrow_mut().read(&mut buf);
+        match res {
+            Ok(len) if len == 1 => Some(buf[0]),
+            _ => None,
+        }
+    }
+
+    fn write(&self, data: u8) {
+        self.hci.borrow_mut().write(&[data]).ok();
+    }
+
+    fn millis(&self) -> u64 {
+        (self.get_millis)()
+    }
 }

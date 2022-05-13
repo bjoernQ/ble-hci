@@ -1,4 +1,4 @@
-use crate::{read_to_data, Data, HciConnector};
+use crate::{read_to_data, Data, HciConnection};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AclPacket {
@@ -34,7 +34,7 @@ pub enum HostBroadcastFlag {
     Reserved,
 }
 
-pub fn parse_acl_packet(connector: &dyn HciConnector) -> AclPacket {
+pub fn parse_acl_packet(connector: &dyn HciConnection) -> AclPacket {
     let raw_handle = connector.read().unwrap() as u16 + ((connector.read().unwrap() as u16) << 8);
 
     let pb = (raw_handle & 0b0011000000000000) >> 12;
