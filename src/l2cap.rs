@@ -12,17 +12,20 @@ pub enum L2capParseError {
     Other,
 }
 
-pub fn parse_l2cap(packet: AclPacket) -> Result<L2capPacket, L2capParseError> {
+pub fn parse_l2cap(packet: AclPacket) -> Result<(u16, L2capPacket), L2capParseError> {
     let data = packet.data.to_slice();
     let length = (data[0] as u16) + ((data[1] as u16) << 8);
     let channel = (data[2] as u16) + ((data[3] as u16) << 8);
     let payload = Data::new(&data[4..]);
 
-    Ok(L2capPacket {
-        length,
-        channel,
-        payload,
-    })
+    Ok((
+        packet.handle,
+        L2capPacket {
+            length,
+            channel,
+            payload,
+        },
+    ))
 }
 
 pub fn encode_l2cap(att_data: Data) -> Data {
